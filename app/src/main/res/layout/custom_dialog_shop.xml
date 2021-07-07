@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:layout_height="wrap_content">
+    <ImageView
+        android:layout_margin="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:id="@+id/custom_img"
+        android:src="@drawable/ic_down"/>
+    <TextView
+        android:layout_margin="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="aaaaaaaaaaaaaaaaaaaaaa"
+        android:gravity="center"
+        android:textColor="@color/black"
+        android:textSize="@dimen/text_side"
+        android:id="@+id/custom_title"/>
+    <Spinner
+        android:layout_margin="10dp"
+        android:layout_width="300dp"
+        android:id="@+id/custom_spinner"
+        android:layout_height="50dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/custom_createNewShop"
+        android:textSize="@dimen/text_side"
+        android:text="Create new"
+        android:layout_margin="10dp"
+        android:textColor="@color/teal_200"/>
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:hint="shop name..."
+        android:textSize="@dimen/text_side"
+        android:paddingLeft="10dp"
+        android:id="@+id/custom_shopname"/>
+    <Button
+        android:visibility="visible"
+        android:layout_margin="10dp"
+        android:layout_width="100dp"
+        android:layout_height="50dp"
+        android:text="download"
+        android:id="@+id/custom_download"
+        android:textColor="@color/white"
+        android:textSize="10dp"/>
+</LinearLayout>

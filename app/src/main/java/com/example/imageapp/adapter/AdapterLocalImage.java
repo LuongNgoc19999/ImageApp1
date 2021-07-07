@@ -1,4 +1,4 @@
-package com.example.imageapp;
+package com.example.imageapp.adapter;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -8,11 +8,11 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.example.imageapp.R;
 import com.example.imageapp.databinding.ItemLoaclImageBinding;
 import com.example.imageapp.model.Data;
-import com.example.imageapp.model.Image;
 import com.example.imageapp.model.IonClickImage;
-import com.squareup.picasso.Picasso;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -45,18 +45,18 @@ public class AdapterLocalImage extends RecyclerView.Adapter<AdapterLocalImage.Vi
     @Override
     public void onBindViewHolder(@NonNull @NotNull ViewHolder holder, int position) {
         Data data = dataList.get(position);
-        Picasso.get().load(data.getImg_url()).into(holder.binding.imgLocal);
+        Glide.with(context).load("http://192.168.1.222:5000/"+data.getImg_url()).error(R.drawable.ic_circle_button).into(holder.binding.imgLocal);
         holder.binding.nameLocal.setText(data.getTitle());
         holder.binding.imgLocal.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ionClickImage.clickImage(data);
+                ionClickImage.clickImage(data, position);
             }
         });
         holder.binding.nameLocal.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ionClickImage.clickImage(data);
+                ionClickImage.clickImage(data, position);
             }
         });
 

@@ -1,6 +1,7 @@
 package com.example.imageapp;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.pm.PackageManager;
@@ -11,9 +12,16 @@ import android.os.Environment;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.SeekBar;
+import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -21,20 +29,25 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.databinding.DataBindingUtil;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.example.imageapp.SQLite.DBManager;
+import com.example.imageapp.adapter.AdaperSearchImag;
+import com.example.imageapp.adapter.AdapterPager;
 import com.example.imageapp.databinding.ActivityMainBinding;
+import com.example.imageapp.fragment.DetailFragment;
 import com.example.imageapp.model.Data;
 import com.example.imageapp.model.GenerPrecenter;
 import com.example.imageapp.model.Image;
 import com.example.imageapp.model.IonClickImage;
+import com.example.imageapp.model.Shop;
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.otaliastudios.cameraview.BitmapCallback;
 import com.otaliastudios.cameraview.CameraListener;
 import com.otaliastudios.cameraview.PictureResult;
-import com.squareup.picasso.Picasso;
 
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
@@ -46,11 +59,13 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
+    public static final boolean CAPTURE = true;
+    public static final boolean DETAIL = false;
+    private boolean isCapture = CAPTURE;
     public static final String TAG = "Main";
     public static final float zoom05 = 0.5f;
     public static final float zoom10 = 1f;
@@ -60,25 +75,59 @@ public class MainActivity extends AppCompatActivity {
     ActivityMainBinding binding;
     List<Data> imageSearch = new ArrayList<>();
     AdaperSearchImag adapterSearch;
-    Bitmap bitmap;
     FileOutputStream outputStream;
+    List<Fragment> fragmentList = new ArrayList<>();
+    AdapterPager adapterPager;
+    DetailFragment detailFragment;
+    DBManager dbManager;
+
+    public void initViewPager(int i){
+
+        adapterPager = new AdapterPager(getSupportFragmentManager());
+        for(Data data: imageSearch){
+            detailFragment = new DetailFragment(data, getBaseContext());
+            adapterPager.AddFragment(detailFragment);
+        }
+        binding.viewPager.setAdapter(adapterPager);
+        binding.viewPager.setCurrentItem(i);
+        isCapture = DETAIL;
+        CheckCapture();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getSupportActionBar().hide();
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
+        dbManager = new DBManager(getBaseContext());
         setUpCamera();
         ckick();
+        CheckCapture();
         capture();
         initSearchRecyclerView();
-        binding.img.setVisibility(View.VISIBLE);
-        Picasso.get()
-                .load("http://192.168.1.222:5000/images/VU5596112459.jpg")
-                .resize(50, 50)
-                .centerCrop()
-                .into(binding.img);
 
+    }
+
+    private void insertShop() {
+        List<Shop> shops = new ArrayList<>();
+        shops.add(new Shop(1,"Shop 1"));
+        shops.add(new Shop(2,"Shop 2"));
+        shops.add(new Shop(3,"Shop 3"));
+        shops.add(new Shop(4,"Shop 4"));
+        for (Shop s: shops){
+            dbManager.insertShop(s);
+        }
+        Log.d("mop", "size: "+String.valueOf(dbManager.getAllShop().size()));
+    }
+
+    private void CheckCapture() {
+        if (isCapture) {
+            binding.layoutCapure.setVisibility(View.VISIBLE);
+            binding.layoutDetail.setVisibility(View.GONE);
+        } else {
+            binding.layoutCapure.setVisibility(View.GONE);
+            binding.layoutDetail.setVisibility(View.VISIBLE);
+        }
     }
 
     private void initSearchRecyclerView() {
@@ -88,12 +137,13 @@ public class MainActivity extends AppCompatActivity {
         binding.recyLoadImage.setLayoutManager(layoutManager);
         adapterSearch.setIonClickImage(new IonClickImage() {
             @Override
-            public void clickImage(Data image) {
-
+            public void clickImage(Data image, int i) {
+                initViewPager(i);
             }
 
+
             @Override
-            public void longClickImage(Data image, View view) {
+            public void longClickImage(Data image, View view, int i) {
                 PopupMenu popup = new PopupMenu(MainActivity.this, view);
                 popup.inflate(R.menu.menu_search);
 
@@ -107,13 +157,10 @@ public class MainActivity extends AppCompatActivity {
                     public boolean onMenuItemClick(MenuItem item) {
                         switch (item.getItemId()) {
                             case R.id.download:
-//                                if(isStoragePermissionGranted()){
-//                                    SaveImage(image.getImage());
-//                                }
-                                Toast.makeText(getBaseContext(), "Download", Toast.LENGTH_SHORT).show();
+                                ShowDownloadDialog(image);
                                 break;
                             case R.id.view:
-                                Toast.makeText(getBaseContext(), "View", Toast.LENGTH_SHORT).show();
+                                initViewPager(i);
                                 break;
                             default:
                                 break;
@@ -126,6 +173,55 @@ public class MainActivity extends AppCompatActivity {
                 popup.show();
             }
         });
+    }
+
+    private void ShowDownloadDialog(Data data) {
+        List<Shop> shops = new ArrayList<>();
+        shops = dbManager.getAllShop();
+        String[] shop_name = new String[shops.size()];
+        for(int i=0;i<shops.size();i++){
+            shop_name[i] = shops.get(i).getName();
+        }
+        Dialog dialog = new Dialog(MainActivity.this);
+        dialog.setContentView(R.layout.custom_dialog_shop);
+        final ImageView imageView = dialog.findViewById(R.id.custom_img);
+        final TextView textView = dialog.findViewById(R.id.custom_title);
+
+        Glide.with(getBaseContext()).load(GenerPrecenter.URL+data.getImg_url()).error(R.drawable.ic_circle_button).into(imageView);
+        textView.setText(data.getTitle());
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(getBaseContext(),
+                android.R.layout.simple_spinner_item,
+                shop_name);
+
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+
+        final Spinner spinner = dialog.findViewById(R.id.custom_spinner);
+        spinner.setAdapter(adapter);
+
+        // When user select a List-Item.
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+        final Button button = dialog.findViewById(R.id.custom_download);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.cancel();
+            }
+        });
+        dialog.create();
+        dialog.show();
     }
 
     private void setUpCamera() {
@@ -147,56 +243,9 @@ public class MainActivity extends AppCompatActivity {
                 result.toBitmap(1080, 1920, new BitmapCallback() {
                     @Override
                     public void onBitmapReady(@Nullable @org.jetbrains.annotations.Nullable Bitmap bitmap) {
-                        binding.img.setVisibility(View.VISIBLE);
+//                        binding.img.setVisibility(View.VISIBLE);
+                        ConVertJson(GenerPrecenter.request);
 
-                        try {
-                            JSONObject jsonObject = new JSONObject(GenerPrecenter.request);
-                            JSONArray jsonArray = jsonObject.getJSONArray("data");
-
-                            ArrayList<Data> listdata = new ArrayList<>();
-                            Gson gson = new Gson();
-                            ArrayList joList = gson.fromJson(String.valueOf(jsonArray), ArrayList.class);
-//                            ArrayList<String> arr = new ArrayList<>();
-//                            arr.addAll(Arrays.asList(joList));
-                            for (int i=0;i<jsonArray.length();i++){
-                                JSONObject js = jsonArray.getJSONObject(i);
-                                String basePrice = js.getString("basePrice");
-                                String date = js.getString("date");
-                                String img_url = js.getString("img_url");
-                                String km = js.getString("km");
-                                String repair = js.getString("repair");
-                                String title = js.getString("title");
-                                String totalPrice = js.getString("totalPrice");
-                                String year = js.getString("year");
-                                Data data = new Data(basePrice, date, img_url, km, repair, title, totalPrice, year);
-                                Log.d(TAG, "http://192.168.1.222:5000/"+data.getImg_url());
-                                imageSearch.add(data);
-                            }
-                            adapterSearch = new AdaperSearchImag(getBaseContext(), imageSearch);
-                            binding.recyLoadImage.setAdapter(adapterSearch);
-//                            adapterSearch.notifyDataSetChanged();
-
-
-
-
-//                            Data d = gson.fromJson(String.valueOf(joList.get(0)), Data.class);
-//                            Log.d(TAG, d.toString());
-//                            imageSearch.addAll(joList);
-//                            adapterSearch.notifyDataSetChanged();
-//                            for (int i = 0; i < arr.size(); i++) {
-////                                Data d = gson.fromJson(String.valueOf(arr.get(i)), Data.class);
-//                                Log.d(TAG, arr.get(i));
-//                            }
-
-
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                            Log.d(TAG, e.getMessage());
-                        }
-
-
-//                        imageSearch.add(new Image("0", "Image0"+Image.TYPY_IMAGE, "", bitmap));
-                        adapterSearch.notifyDataSetChanged();
 
 //                        binding.img.setImageBitmap(bitmap);
                         Log.d("mop", "getBitmap");
@@ -212,6 +261,33 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+    }
+
+    private void ConVertJson(String request) {
+        imageSearch.clear();
+        try {
+            JSONObject jsonObject = new JSONObject(request);
+            JSONArray jsonArray = jsonObject.getJSONArray("data");
+            Gson gson = new Gson();
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject js = jsonArray.getJSONObject(i);
+                String basePrice = js.getString("basePrice");
+                String date = js.getString("date");
+                String img_url = js.getString("img_url");
+                String km = js.getString("km");
+                String repair = js.getString("repair");
+                String title = js.getString("title");
+                String totalPrice = js.getString("totalPrice");
+                String year = js.getString("year");
+                Data data = new Data(basePrice, date, img_url, km, repair, title, totalPrice, year);
+                Log.d(TAG, "http://192.168.1.222:5000/" + data.getImg_url());
+                imageSearch.add(data);
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+            Log.d(TAG, e.getMessage());
+        }
+        adapterSearch.notifyDataSetChanged();
     }
 
     private void generateDataList(List<Data> photoList) {
@@ -242,39 +318,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-//        switch (requestCode) {
-//            case REQUEST_CAMERA: {
-//                // If request is cancelled, the result arrays are empty.
-//                if (grantResults.length > 0
-//                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//
-//                    // permission was granted, yay! Do the
-//                    // contacts-related task you need to do.
-//                    Toast.makeText(getContext(), "Permission granted", Toast.LENGTH_SHORT).show();
-//                } else {
-//
-//                    // permission denied, boo! Disable the
-//                    // functionality that depends on this permission.
-//                    Toast.makeText(getContext(), "Permission denied", Toast.LENGTH_SHORT).show();
-//                }
-//                return;
-//            }
-//
-//            case 2: {
-//
-//                if (grantResults.length > 0
-//                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//                    Toast.makeText(getContext(), "Permission granted", Toast.LENGTH_SHORT).show();
-//                    SaveImage(bitmap);
-//                } else {
-//                    Toast.makeText(getContext(), "Permission denied", Toast.LENGTH_SHORT).show();
-//                }
-//                return;
-//            }
-//
-//            // other 'case' lines to check for other
-//            // permissions this app might request
-//        }
     }
 
     private void Save(Bitmap bitmap) {
@@ -325,28 +368,43 @@ public class MainActivity extends AppCompatActivity {
 //        imageView.setImageDrawable(Drawable.createFromPath(file.toString()));
     }
 
+    @Override
+    public void onBackPressed() {
+        if (isCapture) {
+            finish();
+        } else {
+            isCapture = CAPTURE;
+            CheckCapture();
+        }
+    }
 
     private void ckick() {
-        binding.img.setOnClickListener(new View.OnClickListener() {
+        binding.btnExit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                binding.img.setVisibility(View.GONE);
+                onBackPressed();
             }
         });
-        binding.capure.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d("mop", "capure");
-                binding.camera.takePicture();
-            }
-        });
-        binding.camera.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.d("mop", "cam click");
-                binding.camera.takePicture();
-            }
-        });
+//        binding.img.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                binding.img.setVisibility(View.GONE);
+//            }
+//        });
+//        binding.capure.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Log.d("mop", "capure");
+//                binding.camera.takePicture();
+//            }
+//        });
+//        binding.camera.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Log.d("mop", "cam click");
+//                binding.camera.takePicture();
+//            }
+//        });
         binding.btnZoom15.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

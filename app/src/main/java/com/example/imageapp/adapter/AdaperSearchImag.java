@@ -1,19 +1,18 @@
-package com.example.imageapp;
+package com.example.imageapp.adapter;
 
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.example.imageapp.R;
 import com.example.imageapp.databinding.ItemSearchImageBinding;
 import com.example.imageapp.model.Data;
-import com.example.imageapp.model.Image;
 import com.example.imageapp.model.IonClickImage;
-import com.squareup.picasso.Picasso;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -47,22 +46,18 @@ public class AdaperSearchImag extends RecyclerView.Adapter<AdaperSearchImag.View
     @Override
     public void onBindViewHolder(@NonNull @NotNull ViewHolder holder, int position) {
         Data data = dataList.get(position);
-//        Picasso.get().load("http://192.168.1.222:5000/"+data.getImg_url()).into(holder.binding.imgSearch);
-        Picasso.get()
-                .load("http://192.168.1.222:5000/images/VU5596112459.jpg"+data.getImg_url())
-                .resize(50, 50)
-                .centerCrop()
-                .into(holder.binding.imgSearch);
+        Glide.with(context).load("http://192.168.1.222:5000/"+data.getImg_url()).error(R.drawable.ic_circle_button).into(holder.binding.imgSearch);
+
         holder.binding.imgSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ionClickImage.clickImage(data);
+                ionClickImage.clickImage(data, position);
             }
         });
         holder.binding.imgSearch.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                ionClickImage.longClickImage(data, v);
+                ionClickImage.longClickImage(data, v, position);
                 return false;
             }
         });
