@@ -8,14 +8,16 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 import androidx.annotation.Nullable;
 
+import com.example.imageapp.model.Data;
 import com.example.imageapp.model.Shop;
+import com.google.gson.annotations.SerializedName;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class DBManager extends SQLiteOpenHelper {
 
-    public static final int VERSON = 1;
+    public static final int VERSON = 2;
     SQLiteDatabase sqLiteDatabase;
     ContentValues contentValues;
     Cursor cursor;
@@ -38,10 +40,8 @@ public class DBManager extends SQLiteOpenHelper {
     public static final String YEAR = "YEAR";
 
 
-
-
     public DBManager(Context context) {
-        super(context, DB_NAME, null, VERSON);
+        super(context, DB_NAME, null, VERSON, null);
     }
 
     @Override
@@ -61,7 +61,7 @@ public class DBManager extends SQLiteOpenHelper {
                 TITTLE + " Text, " +
                 TOTALPRICE + " Text, " +
                 YEAR + " Text, " +
-                ID_SHOP + " Text)";
+                NAME_SHOP + " Text)";
         //Chạy câu lệnh tạo bảng product
         db.execSQL(queryCreateInfo);
     }
@@ -75,6 +75,87 @@ public class DBManager extends SQLiteOpenHelper {
         }
     }
 
+    public void insertImage(Data item, String name_shop) {
+        sqLiteDatabase = getWritableDatabase();
+        contentValues = new ContentValues();
+
+        contentValues.put(BASE_PRICE, item.getBasePrice());
+        contentValues.put(DATE, item.getDate());
+        contentValues.put(IMG_URL, item.getImg_url());
+        contentValues.put(KM, item.getKm());
+        contentValues.put(REPAIR, item.getRepair());
+        contentValues.put(TITTLE, item.getTitle());
+        contentValues.put(TOTALPRICE, item.getTotalPrice());
+        contentValues.put(YEAR, item.getYear());
+        contentValues.put(NAME_SHOP, name_shop);
+        sqLiteDatabase.insert(DATA, null, contentValues);
+        closeDB();
+    }
+
+
+
+
+    public int deleteImageByName(String name) {
+        sqLiteDatabase = getWritableDatabase();
+        return Long.valueOf(sqLiteDatabase.delete(DATA, TITTLE + " = ?", new String[]{String.valueOf(name)})).intValue();
+    }
+    public int deleteImageByID(int id) {
+        sqLiteDatabase = getWritableDatabase();
+        return Long.valueOf(sqLiteDatabase.delete(DATA, ID + " = ?", new String[]{String.valueOf(id)})).intValue();
+    }
+
+    public int deleteImageByShop(String name) {
+        sqLiteDatabase = getWritableDatabase();
+        return Long.valueOf(sqLiteDatabase.delete(DATA, NAME_SHOP + " = ?", new String[]{String.valueOf(name)})).intValue();
+    }
+
+    public List<Data> getAllImage(String nameFile) {
+        List<Data> resuilt = new ArrayList<>();
+        Data data = new Data();
+        String select = "SELECT * FROM " + DATA + " WHERE " + NAME_SHOP + "= '" + nameFile + "'";
+        sqLiteDatabase = getWritableDatabase();
+        cursor = sqLiteDatabase.rawQuery(select, null);
+        if (cursor.moveToFirst()) {
+            do {
+                int id = cursor.getInt(0);
+                String basePrice = cursor.getString(1);
+                String date = cursor.getString(2);
+                String img_url = cursor.getString(3);
+                String km = cursor.getString(4);
+                String repair = cursor.getString(5);
+                String title = cursor.getString(6);
+                String totalPrice = cursor.getString(7);
+                String year = cursor.getString(8);
+                data = new Data(id, basePrice, date, img_url, km, repair, title, totalPrice, year);
+                resuilt.add(data);
+            } while (cursor.moveToNext());
+        }
+        closeDB();
+        return resuilt;
+    }
+
+    public boolean ifExistsImage(Shop shop) {
+        SQLiteDatabase database = getReadableDatabase();
+        Cursor cursor;
+        String checkQuery = "SELECT * FROM " + DATA + " WHERE " + NAME_SHOP + " = " + shop.getName();
+        cursor = database.rawQuery(checkQuery, null);
+        boolean exists = (cursor.getCount() > 0);
+        cursor.close();
+        return exists;
+    }
+//    public boolean ifExistsImage() {
+//        SQLiteDatabase database = getReadableDatabase();
+//        Cursor cursor;
+//        String checkQuery = "SELECT * FROM " + SHOP;
+//        cursor = database.rawQuery(checkQuery, null);
+//        boolean exists = (cursor.getCount() > 0);
+//        cursor.close();
+//        return exists;
+//    }
+
+    //------------------------------------------------------------------------------------------------------------
+
+
     public void insertShop(Shop item) {
         sqLiteDatabase = getWritableDatabase();
         contentValues = new ContentValues();
@@ -83,12 +164,13 @@ public class DBManager extends SQLiteOpenHelper {
         sqLiteDatabase.insert(SHOP, null, contentValues);
         closeDB();
     }
+
     public void updateShop(Shop item) {
         sqLiteDatabase = getWritableDatabase();
         contentValues = new ContentValues();
 
         contentValues.put(NAME_SHOP, item.getName());
-        sqLiteDatabase.update(SHOP, contentValues, ID_SHOP + " =?",
+        sqLiteDatabase.update(SHOP, contentValues, ID + " =?",
                 new String[]{String.valueOf(item.getId())});
         closeDB();
     }
@@ -97,13 +179,19 @@ public class DBManager extends SQLiteOpenHelper {
     public boolean deleteAllShop() {
         sqLiteDatabase = getWritableDatabase();
         sqLiteDatabase.delete(SHOP, null, null);
+        sqLiteDatabase.delete(DATA, null, null);
         closeDB();
         return true;
     }
 
+    public int deleteShop(String name) {
+        sqLiteDatabase = getWritableDatabase();
+        return Long.valueOf(sqLiteDatabase.delete(SHOP, NAME_SHOP + " = ?", new String[]{String.valueOf(name)})).intValue();
+    }
+
     public List<Shop> getAllShop() {
         List<Shop> shops = new ArrayList<>();
-        Shop shop = new Shop(0,"");
+        Shop shop;
         String select = "SELECT * FROM " + SHOP;
         sqLiteDatabase = getWritableDatabase();
         cursor = sqLiteDatabase.rawQuery(select, null);
@@ -111,7 +199,7 @@ public class DBManager extends SQLiteOpenHelper {
             do {
                 int id = cursor.getInt(0);
                 String name = cursor.getString(1);
-                shop = new Shop(id, name);
+                shop = new Shop(id, name, new ArrayList<>());
                 shops.add(shop);
             } while (cursor.moveToNext());
         }
@@ -122,12 +210,32 @@ public class DBManager extends SQLiteOpenHelper {
     public boolean ifExistsShop(Shop shop) {
         SQLiteDatabase database = getReadableDatabase();
         Cursor cursor;
-        String checkQuery = "SELECT * FROM " + SHOP +" WHERE "+ID +" = "+shop.getId();
+        String checkQuery = "SELECT * FROM " + SHOP + " WHERE " + ID + " = " + shop.getId();
         cursor = database.rawQuery(checkQuery, null);
         boolean exists = (cursor.getCount() > 0);
         cursor.close();
         return exists;
     }
+    public boolean ifExistsShop(String name) {
+        SQLiteDatabase database = getReadableDatabase();
+        Cursor cursor;
+        String checkQuery = "SELECT * FROM " + SHOP + " WHERE " + NAME_SHOP + " = '" + name+"'";
+        cursor = database.rawQuery(checkQuery, null);
+        boolean exists = (cursor.getCount() > 0);
+        cursor.close();
+        return exists;
+    }
+
+    public boolean ifExistsShop() {
+        SQLiteDatabase database = getReadableDatabase();
+        Cursor cursor;
+        String checkQuery = "SELECT * FROM " + SHOP;
+        cursor = database.rawQuery(checkQuery, null);
+        boolean exists = (cursor.getCount() > 0);
+        cursor.close();
+        return exists;
+    }
+
     public int getMaxId() {
         int id = 0;
         String select = "SELECT MAX(" + ID_SHOP + ") FROM " + SHOP;
@@ -139,8 +247,8 @@ public class DBManager extends SQLiteOpenHelper {
         closeDB();
         return id;
     }
-    //------------------------------------------------------------------------------------------------------------
 
+    //------------------------------------------------------------------------------------------------------------
     private void closeDB() {
         //dong
         if (sqLiteDatabase != null) sqLiteDatabase.close();

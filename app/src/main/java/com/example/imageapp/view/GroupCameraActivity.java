@@ -1,35 +1,21 @@
-package com.example.imageapp;
+package com.example.imageapp.view;
 
-import android.Manifest;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.SeekBar;
-import android.widget.Spinner;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -37,20 +23,18 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager.widget.PagerAdapter;
 import androidx.viewpager.widget.ViewPager;
 
-import com.bumptech.glide.Glide;
+import com.example.imageapp.MainActivity;
+import com.example.imageapp.R;
 import com.example.imageapp.SQLite.DBManager;
 import com.example.imageapp.adapter.AdaperSearchImag;
 import com.example.imageapp.adapter.AdapterLocalImage;
 import com.example.imageapp.adapter.AdapterPager;
-import com.example.imageapp.databinding.ActivityMainBinding;
+import com.example.imageapp.databinding.ActivityGroupCameraBinding;
 import com.example.imageapp.fragment.DetailFragment;
 import com.example.imageapp.model.Data;
 import com.example.imageapp.model.GenerPrecenter;
-import com.example.imageapp.model.Image;
 import com.example.imageapp.model.IonClickImage;
-import com.example.imageapp.model.SharedPrefs;
 import com.example.imageapp.model.Shop;
-import com.example.imageapp.view.FileActivity;
 import com.google.gson.Gson;
 import com.otaliastudios.cameraview.BitmapCallback;
 import com.otaliastudios.cameraview.CameraListener;
@@ -61,17 +45,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.Random;
 
-public class MainActivity extends AppCompatActivity {
-
+public class GroupCameraActivity extends AppCompatActivity {
+    int viewPagerPosition = 0;
     public static final boolean LOCAL = true;
     public static final boolean ONLINE = false;
     private boolean state_detail = LOCAL;
@@ -85,80 +64,32 @@ public class MainActivity extends AppCompatActivity {
     public static final float zoom15 = 1.5f;
     public static final float zoom20 = 2.0f;
     private float zoomState = zoom10;
-    ActivityMainBinding binding;
+    ActivityGroupCameraBinding binding;
     List<Data> imageSearch = new ArrayList<>();
     List<Data> imageLocal = new ArrayList<>();
     AdaperSearchImag adapterSearch;
     AdapterLocalImage adapterLocal;
     FileOutputStream outputStream;
-    List<DetailFragment> fragmentList = new ArrayList<>();
+    List<Fragment> fragmentList = new ArrayList<>();
     AdapterPager adapterPager;
     DetailFragment detailFragment;
     DBManager dbManager;
     Shop shop = new Shop();
-    int viewPagerPosition = 0;
-
-
-
-    public void initViewPager(List<Data> dataList, int i, boolean isLocal) {
-        adapterPager = new AdapterPager(getSupportFragmentManager());
-        for (Data data : dataList) {
-            detailFragment = new DetailFragment(data, shop.getName(), isLocal, i, MainActivity.this);
-            adapterPager.AddFragment(detailFragment);
-        }
-
-        binding.viewPager.setAdapter(adapterPager);
-        binding.viewPager.setCurrentItem(i);
-        binding.indicator.setViewPager(binding.viewPager);
-// optional
-        adapterPager.registerDataSetObserver(binding.indicator.getDataSetObserver());
-        viewPagerPosition = i;
-        isCapture = DETAIL;
-        CheckCapture();
-
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_group_camera);
         getSupportActionBar().hide();
-        binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
+        getintent();
         dbManager = new DBManager(getBaseContext());
-        createDefaulFile();
         setUpCamera();
         ckick();
         CheckCapture();
         capture();
         initSearchRecyclerView();
         initLocalImageRecyclerview();
-
     }
-
-    private void createDefaulFile() {
-//        Log.d("mop", "size1: "+String.valueOf(dbManager.getAllShop().size()));
-        if (!dbManager.ifExistsShop()) {
-            shop = new Shop(0, "Deaful", new ArrayList<>());
-            dbManager.insertShop(shop);
-            SharedPrefs.getInstance().put(KEY_SHARED_PRES_SHOP, shop.getName());
-//            Log.d("mop", "size2: "+String.valueOf(dbManager.getAllShop().size()));
-        } else {
-            shop = new Shop(0, SharedPrefs.getInstance().get(KEY_SHARED_PRES_SHOP, String.class), new ArrayList<>());
-            Log.d("mop", shop.getName());
-
-        }
-    }
-
-//    private void insertShop() {
-//        List<Shop> shops = new ArrayList<>();
-//        shops.add(new Shop(1,"Shop 1"));
-//        shops.add(new Shop(2,"Shop 2"));
-//        shops.add(new Shop(3,"Shop 3"));
-//        shops.add(new Shop(4,"Shop 4"));
-//        for (Shop s: shops){
-//            dbManager.insertShop(s);
-//        }
-//        Log.d("mop", "size: "+String.valueOf(dbManager.getAllShop().size()));
-//    }
 
     private void CheckCapture() {
         if (isCapture) {
@@ -193,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void deleteImage(Data data, int i) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                AlertDialog.Builder builder = new AlertDialog.Builder(GroupCameraActivity.this);
                 builder.setMessage(R.string.dialog_delete_question_file);
                 builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                     @Override
@@ -212,6 +143,13 @@ public class MainActivity extends AppCompatActivity {
                 dialog.show();
             }
         });
+    }
+    private void downloadImage(Data image) {
+        imageLocal.clear();
+        dbManager.insertImage(image, shop.getName());
+        imageLocal.addAll(dbManager.getAllImage(shop.getName()));
+        Log.d("mop", "down:" + shop.getName());
+        adapterLocal.notifyDataSetChanged();
     }
 
     private void initSearchRecyclerView() {
@@ -237,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void longClickImage(Data image, View view, int i) {
-                PopupMenu popup = new PopupMenu(MainActivity.this, view);
+                PopupMenu popup = new PopupMenu(GroupCameraActivity.this, view);
                 popup.inflate(R.menu.menu_search);
 
                 Menu menu = popup.getMenu();
@@ -269,59 +207,31 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void downloadImage(Data image) {
-        imageLocal.clear();
-        dbManager.insertImage(image, shop.getName());
-        imageLocal.addAll(dbManager.getAllImage(shop.getName()));
-        Log.d("mop", "down:" + shop.getName());
-        adapterLocal.notifyDataSetChanged();
+
+    public void getintent() {
+        Intent intent = getIntent();
+        shop = (Shop) intent.getSerializableExtra("group");
+        Log.d("group", shop.toString());
+        binding.fileName.setText(shop.getName());
     }
 
-    private void ShowDownloadDialog(Data data) {
-        List<Shop> shops = new ArrayList<>();
-        shops = dbManager.getAllShop();
-        String[] shop_name = new String[shops.size()];
-        for (int i = 0; i < shops.size(); i++) {
-            shop_name[i] = shops.get(i).getName();
+    public void initViewPager(List<Data> dataList, int i, boolean isLocal) {
+        adapterPager = new AdapterPager(getSupportFragmentManager());
+        for (Data data : dataList) {
+            detailFragment = new DetailFragment(data, shop.getName(), isLocal, i, GroupCameraActivity.this);
+            adapterPager.AddFragment(detailFragment);
         }
-        Dialog dialog = new Dialog(MainActivity.this);
-        dialog.setContentView(R.layout.custom_dialog_shop);
-        final ImageView imageView = dialog.findViewById(R.id.custom_img);
-        final TextView textView = dialog.findViewById(R.id.custom_title);
 
-        Glide.with(getBaseContext()).load(GenerPrecenter.URL + data.getImg_url()).error(R.drawable.ic_circle_button).into(imageView);
-        textView.setText(data.getTitle());
+        binding.viewPager.setAdapter(adapterPager);
+        binding.viewPager.setCurrentItem(i);
+        binding.indicator.setViewPager(binding.viewPager);
+// optional
+        adapterPager.registerDataSetObserver(binding.indicator.getDataSetObserver());
+        viewPagerPosition = i;
+        isCapture = DETAIL;
+        CheckCapture();
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(getBaseContext(),
-                android.R.layout.simple_spinner_item,
-                shop_name);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        final Spinner spinner = dialog.findViewById(R.id.custom_spinner);
-        spinner.setAdapter(adapter);
-        // When user select a List-Item.
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-
-            }
-        });
-        final Button button = dialog.findViewById(R.id.custom_download);
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dialog.cancel();
-            }
-        });
-        dialog.create();
-        dialog.show();
     }
-
     private void setUpCamera() {
         binding.camera.setLifecycleOwner(this);
         binding.seekBar1.setProgress(0);
@@ -362,7 +272,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-//
+
 //    private void ConVertJson(String request) {
 //        imageSearch.clear();
 //        try {
@@ -390,84 +300,6 @@ public class MainActivity extends AppCompatActivity {
 //        adapterSearch.notifyDataSetChanged();
 //    }
 
-    private void generateDataList(List<Data> photoList) {
-        adapterSearch = new AdaperSearchImag(this, photoList);
-        RecyclerView.LayoutManager layoutManager = new GridLayoutManager(getBaseContext(), 1, RecyclerView.HORIZONTAL, false);
-        binding.recyLoadImage.setLayoutManager(layoutManager);
-        binding.recyLoadImage.setAdapter(adapterSearch);
-    }
-
-    public boolean isStoragePermissionGranted() {
-        if (Build.VERSION.SDK_INT >= 23) {
-            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    == PackageManager.PERMISSION_GRANTED) {
-                Log.v(TAG, "Permission is granted");
-                return true;
-            } else {
-
-                Log.v(TAG, "Permission is revoked");
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
-                return false;
-            }
-        } else { //permission is automatically granted on sdk<23 upon installation
-            Log.v(TAG, "Permission is granted");
-            return true;
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
-
-    private void Save(Bitmap bitmap) {
-        File filePath = Environment.getExternalStorageDirectory();
-        File dir = new File(filePath.getAbsoluteFile() + "/Demo/");
-        dir.mkdir();
-        File file = new File(dir, System.currentTimeMillis() + ".jpg");
-        try {
-            outputStream = new FileOutputStream(file);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
-
-        Log.d("mop", "myDir.toString()");
-        try {
-            outputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void SaveImage(Bitmap finalBitmap) {
-        Log.d("save", "myDir.toString()");
-        String root = Environment.getExternalStorageDirectory().toString();
-        File myDir = new File(root + "/saved_images");
-        myDir.mkdirs();
-        Random generator = new Random();
-
-        String fname = GenerPrecenter.createNameImage() + Image.TYPY_IMAGE;
-        File file = new File(myDir, fname);
-        if (file.exists()) file.delete();
-        try {
-            FileOutputStream out = new FileOutputStream(file);
-            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
-            Log.d("save", myDir.toString());
-            out.flush();
-            out.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void GetImage() {
-        ContextWrapper cw = new ContextWrapper(getApplicationContext());
-        File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
-        File file = new File(directory, "mario" + ".png");
-//        imageView.setImageDrawable(Drawable.createFromPath(file.toString()));
-    }
-
     @Override
     public void onBackPressed() {
         if (isCapture) {
@@ -479,42 +311,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable @org.jetbrains.annotations.Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-//        if(requestCode==1999)
-//        {
-//            String name = data.getStringExtra("name");
-//            imageLocal.clear();
-//            imageLocal.addAll(dbManager.getAllImage(name));
-//            adapterLocal.notifyDataSetChanged();
-//            SharedPrefs.getInstance().put(KEY_SHARED_PRES_SHOP, name);
-//            shop.setName(name);
-//        }
-
-    }
-
-    private void checkCounViewPager() {
-        List<Data> ds = new ArrayList<>();
-        ds.addAll(dbManager.getAllImage(shop.getName()));
-        if(ds.size()==0){
-            isCapture = CAPTURE;
-
-            CheckCapture();
-        }else {
-            if(ds.size()>=viewPagerPosition){
-                initViewPager(ds, viewPagerPosition, true);
-            }else {
-                initViewPager(ds, ds.size(), true);
-            }
-        }
-    }
-
     private void ckick() {
         binding.btnDelete.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                AlertDialog.Builder builder = new AlertDialog.Builder(GroupCameraActivity.this);
                 builder.setMessage(R.string.dialog_delete_question_file);
                 builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                     @Override
@@ -567,7 +368,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageSelected(int position) {
                 viewPagerPosition = position;
-//                Toast.makeText(getBaseContext(), String.valueOf(viewPagerPosition), Toast.LENGTH_SHORT).show();
             }
 
             @Override
@@ -576,51 +376,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        binding.viewPager.addOnAdapterChangeListener(new ViewPager.OnAdapterChangeListener() {
-            @Override
-            public void onAdapterChanged(@NonNull @NotNull ViewPager viewPager, @Nullable @org.jetbrains.annotations.Nullable PagerAdapter oldAdapter, @Nullable @org.jetbrains.annotations.Nullable PagerAdapter newAdapter) {
-//                viewPager.setAdapter(newAdapter);
-//                if(oldAdapter.getCount()!=newAdapter.getCount()){
-//                    viewPager.setAdapter(newAdapter);
-//                }
-            }
-        });
-
-        binding.btnAddFile.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(getBaseContext(), FileActivity.class);
-//                intent.putExtra("name", shop.getName());
-                startActivity(intent);
-//                startActivityForResult(intent, 1999);
-            }
-        });
         binding.btnExit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 onBackPressed();
             }
         });
-//        binding.img.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                binding.img.setVisibility(View.GONE);
-//            }
-//        });
-//        binding.capure.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                Log.d("mop", "capure");
-//                binding.camera.takePicture();
-//            }
-//        });
-//        binding.camera.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                Log.d("mop", "cam click");
-//                binding.camera.takePicture();
-//            }
-//        });
+
         binding.btnZoom15.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -695,3 +457,4 @@ public class MainActivity extends AppCompatActivity {
     }
 
 }
+

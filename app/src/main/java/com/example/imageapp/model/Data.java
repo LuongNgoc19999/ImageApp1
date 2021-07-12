@@ -2,7 +2,10 @@ package com.example.imageapp.model;
 
 import com.google.gson.annotations.SerializedName;
 
-public class Data {
+import java.io.Serializable;
+
+public class Data implements Serializable {
+    int id;
     @SerializedName("basePrice")
     String basePrice;
     @SerializedName("date")
@@ -22,7 +25,8 @@ public class Data {
 //    @SerializedName("albumId")
 //    String  shop;
 
-    public Data(String basePrice, String date, String img_url, String km, String repair, String title, String totalPrice, String year) {
+    public Data(int id, String basePrice, String date, String img_url, String km, String repair, String title, String totalPrice, String year) {
+        this.id = id;
         this.basePrice = basePrice;
         this.date = date;
         this.img_url = img_url;
@@ -33,9 +37,20 @@ public class Data {
         this.year = year;
 //        this.shop = shop;
     }
+    public Data() {
+
+    }
 
     public Data(Data data) {
-        this(data.getBasePrice(), data.getDate(), data.getImg_url(), data.getKm(), data.getRepair(), data.getTitle(), data.getTotalPrice(), data.getYear());
+        this(data.getId(), data.getBasePrice(), data.getDate(), data.getImg_url(), data.getKm(), data.getRepair(), data.getTitle(), data.getTotalPrice(), data.getYear());
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getBasePrice() {

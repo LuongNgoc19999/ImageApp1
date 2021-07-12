@@ -59,6 +59,12 @@ public class AdapterLocalImage extends RecyclerView.Adapter<AdapterLocalImage.Vi
                 ionClickImage.clickImage(data, position);
             }
         });
+        holder.binding.btnDelete.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ionClickImage.deleteImage(data, position);
+            }
+        });
 
     }
 

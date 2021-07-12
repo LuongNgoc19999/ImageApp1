@@ -1,7 +1,17 @@
 package com.example.imageapp.model;
 
+import android.util.Log;
+
+import com.google.gson.Gson;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 
 public class GenerPrecenter {
 
@@ -13,6 +23,34 @@ public class GenerPrecenter {
         SimpleDateFormat format1 = new SimpleDateFormat("yyyyMMddhhmmss");
 
         return format1.format(cal.getTime());
+    }
+
+    public static List<Data> ConVertJson(String request) {
+        List<Data> resuilt = new ArrayList<>();
+        Data data = new Data();
+        try {
+            JSONObject jsonObject = new JSONObject(request);
+            JSONArray jsonArray = jsonObject.getJSONArray("data");
+            Gson gson = new Gson();
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject js = jsonArray.getJSONObject(i);
+                String basePrice = js.getString("basePrice");
+                String date = js.getString("date");
+                String img_url = js.getString("img_url");
+                String km = js.getString("km");
+                String repair = js.getString("repair");
+                String title = js.getString("title");
+                String totalPrice = js.getString("totalPrice");
+                String year = js.getString("year");
+                data = new Data(0, basePrice, date, img_url, km, repair, title, totalPrice, year);
+//                Log.d(TAG, "http://192.168.1.222:5000/" + data.getImg_url());
+                resuilt.add(data);
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+//            Log.d(TAG, e.getMessage());
+        }
+        return resuilt;
     }
 
 }

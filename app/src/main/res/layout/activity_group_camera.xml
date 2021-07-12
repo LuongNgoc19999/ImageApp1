@@ -5,7 +5,7 @@
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".MainActivity">
+        tools:context=".view.GroupCameraActivity">
 
         <LinearLayout
             android:id="@+id/layout_capure"
@@ -19,22 +19,17 @@
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:background="@color/purple_700"
-                android:orientation="horizontal"
-                android:weightSum="10">
+                android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/file_name"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_weight="8" />
-
-                <ImageView
-                    android:id="@+id/btn_add_file"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="2"
-                    android:padding="10dp"
-                    android:src="@drawable/ic_add" />
+                    android:gravity="center_vertical"
+                    android:paddingLeft="@dimen/text_side"
+                    android:text="@string/app_name"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/text_side" />
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -251,7 +246,7 @@
             android:background="@color/white"
             android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:visibility="gone"
+            android:visibility="visible"
             android:weightSum="13">
             <LinearLayout
                 android:layout_width="match_parent"
@@ -273,7 +268,6 @@
                     android:layout_weight="14"/>
             </LinearLayout>
 
-
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -289,11 +283,11 @@
 
                 <ImageButton
                     android:id="@+id/btn_delete"
-                    android:visibility="gone"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_alignParentRight="true"
-                    android:src="@drawable/ic_baseline_delete_24" />
+                    android:src="@drawable/ic_baseline_delete_24"
+                    android:visibility="gone" />
             </RelativeLayout>
 
             <ImageView
@@ -303,6 +297,5 @@
                 android:layout_weight="1"
                 android:src="@drawable/ic_down" />
         </LinearLayout>
-
     </RelativeLayout>
 </layout>
