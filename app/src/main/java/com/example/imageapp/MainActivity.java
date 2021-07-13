@@ -12,10 +12,13 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -31,8 +34,9 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.databinding.DataBindingUtil;
-import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager.widget.PagerAdapter;
 import androidx.viewpager.widget.ViewPager;
@@ -48,29 +52,31 @@ import com.example.imageapp.model.Data;
 import com.example.imageapp.model.GenerPrecenter;
 import com.example.imageapp.model.Image;
 import com.example.imageapp.model.IonClickImage;
+import com.example.imageapp.model.ItemTouchHelperListener;
+import com.example.imageapp.model.RecyclerViewItemTouchHelper;
 import com.example.imageapp.model.SharedPrefs;
 import com.example.imageapp.model.Shop;
 import com.example.imageapp.view.FileActivity;
-import com.google.gson.Gson;
 import com.otaliastudios.cameraview.BitmapCallback;
 import com.otaliastudios.cameraview.CameraListener;
 import com.otaliastudios.cameraview.PictureResult;
 
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ItemTouchHelperListener {
+
+    private int heightScreen = 0;
+    private int widthScreen = 0;
+    private int heightCamera = 0;
+    private int widthCamera = 0;
 
     public static final boolean LOCAL = true;
     public static final boolean ONLINE = false;
@@ -97,7 +103,17 @@ public class MainActivity extends AppCompatActivity {
     DBManager dbManager;
     Shop shop = new Shop();
     int viewPagerPosition = 0;
+    DisplayMetrics metrics = new DisplayMetrics();
 
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        View v = findViewById(R.id.camera);
+        widthCamera = v.getWidth();
+        heightCamera = v.getHeight();
+        heightScreen = metrics.heightPixels;
+        widthScreen = metrics.widthPixels;
+    }
 
 
     public void initViewPager(List<Data> dataList, int i, boolean isLocal) {
@@ -121,8 +137,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindowManager().getDefaultDisplay().getMetrics(metrics);
+
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
         getSupportActionBar().hide();
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
+
         dbManager = new DBManager(getBaseContext());
         createDefaulFile();
         setUpCamera();
@@ -169,6 +192,30 @@ public class MainActivity extends AppCompatActivity {
             binding.layoutDetail.setVisibility(View.VISIBLE);
         }
     }
+    @Override
+    public void onSwipe(RecyclerView.ViewHolder viewHolder) {
+        if(viewHolder instanceof AdapterLocalImage.ViewHolder){
+            String name = imageLocal.get(viewHolder.getAdapterPosition()).getTitle();
+            int id = imageLocal.get(viewHolder.getAdapterPosition()).getId();
+            AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+            builder.setMessage(R.string.dialog_delete_question_file);
+            builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.cancel();
+                }
+            }).setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dbManager.deleteImageByID(id);
+                    updateLocalImageRecyclerView();
+                    dialog.cancel();
+                }
+            });
+            Dialog dialog = builder.create();
+            dialog.show();
+        }
+    }
 
     private void initLocalImageRecyclerview() {
         imageLocal.addAll(dbManager.getAllImage(shop.getName()));
@@ -176,6 +223,13 @@ public class MainActivity extends AppCompatActivity {
         binding.recyDownLoadImage.setAdapter(adapterLocal);
         RecyclerView.LayoutManager layoutManager = new GridLayoutManager(getBaseContext(), 1, RecyclerView.VERTICAL, false);
         binding.recyDownLoadImage.setLayoutManager(layoutManager);
+
+        RecyclerView.ItemDecoration decoration = new DividerItemDecoration(getBaseContext(), DividerItemDecoration.VERTICAL);
+        binding.recyDownLoadImage.addItemDecoration(decoration);//theem dong ker ben duoi
+
+        ItemTouchHelper.SimpleCallback simpleCallback = new RecyclerViewItemTouchHelper(0, ItemTouchHelper.LEFT, this);
+        new ItemTouchHelper(simpleCallback).attachToRecyclerView(binding.recyDownLoadImage);
+
         adapterLocal.setIonClickImage(new IonClickImage() {
             @Override
             public void clickImage(Data data, int i) {
@@ -338,10 +392,12 @@ public class MainActivity extends AppCompatActivity {
                 // A Picture was taken!
                 // If planning to show a Bitmap, we will take care of
                 // EXIF rotation and background threading for you...
-                result.toBitmap(1080, 1920, new BitmapCallback() {
+                result.toBitmap(1080, heightScreen, new BitmapCallback() {
                     @Override
                     public void onBitmapReady(@Nullable @org.jetbrains.annotations.Nullable Bitmap bitmap) {
-//                        binding.img.setVisibility(View.VISIBLE);
+                        bitmap = GenerPrecenter.CropImage(bitmap, widthScreen, heightScreen, widthCamera, heightCamera);
+                        binding.img.setVisibility(View.VISIBLE);
+                        binding.img.setImageBitmap(bitmap);
                         imageSearch.clear();
                         imageSearch.addAll(GenerPrecenter.ConVertJson(GenerPrecenter.request));
                         adapterSearch.notifyDataSetChanged();
@@ -361,34 +417,13 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+        binding.img.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                v.setVisibility(View.GONE);
+            }
+        });
     }
-//
-//    private void ConVertJson(String request) {
-//        imageSearch.clear();
-//        try {
-//            JSONObject jsonObject = new JSONObject(request);
-//            JSONArray jsonArray = jsonObject.getJSONArray("data");
-//            Gson gson = new Gson();
-//            for (int i = 0; i < jsonArray.length(); i++) {
-//                JSONObject js = jsonArray.getJSONObject(i);
-//                String basePrice = js.getString("basePrice");
-//                String date = js.getString("date");
-//                String img_url = js.getString("img_url");
-//                String km = js.getString("km");
-//                String repair = js.getString("repair");
-//                String title = js.getString("title");
-//                String totalPrice = js.getString("totalPrice");
-//                String year = js.getString("year");
-//                Data data = new Data(0, basePrice, date, img_url, km, repair, title, totalPrice, year);
-//                Log.d(TAG, "http://192.168.1.222:5000/" + data.getImg_url());
-//                imageSearch.add(data);
-//            }
-//        } catch (JSONException e) {
-//            e.printStackTrace();
-//            Log.d(TAG, e.getMessage());
-//        }
-//        adapterSearch.notifyDataSetChanged();
-//    }
 
     private void generateDataList(List<Data> photoList) {
         adapterSearch = new AdaperSearchImag(this, photoList);
@@ -497,20 +532,21 @@ public class MainActivity extends AppCompatActivity {
     private void checkCounViewPager() {
         List<Data> ds = new ArrayList<>();
         ds.addAll(dbManager.getAllImage(shop.getName()));
-        if(ds.size()==0){
+        if (ds.size() == 0) {
             isCapture = CAPTURE;
 
             CheckCapture();
-        }else {
-            if(ds.size()>=viewPagerPosition){
+        } else {
+            if (ds.size() >= viewPagerPosition) {
                 initViewPager(ds, viewPagerPosition, true);
-            }else {
+            } else {
                 initViewPager(ds, ds.size(), true);
             }
         }
     }
 
     private void ckick() {
+//        ItemTouchHelper.SimpleCallback simpleCallback = new RecyclerViewI
         binding.btnDelete.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -525,14 +561,14 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
 //                        fragmentList.addAll((Collection<? extends DetailFragment>) adapterPager.getFragments());
-                        if(adapterPager.getCount()<=1){
+                        if (adapterPager.getCount() <= 1) {
                             detailFragment = (DetailFragment) adapterPager.getFragments().get(0);
                             Data data = detailFragment.getData();
                             dbManager.deleteImageByID(data.getId());
                             isCapture = CAPTURE;
                             CheckCapture();
                             updateLocalImageRecyclerView();
-                        }else {
+                        } else {
                             viewPagerPosition = binding.viewPager.getCurrentItem();
                             detailFragment = (DetailFragment) adapterPager.getFragments().get(viewPagerPosition);
                             Data data = detailFragment.getData();
@@ -587,6 +623,12 @@ public class MainActivity extends AppCompatActivity {
         });
 
         binding.btnAddFile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+        binding.btnViewGroup.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(getBaseContext(), FileActivity.class);
@@ -693,5 +735,6 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         binding.camera.destroy();
     }
+
 
 }

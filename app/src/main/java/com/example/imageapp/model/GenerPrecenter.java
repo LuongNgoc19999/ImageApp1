@@ -1,5 +1,6 @@
 package com.example.imageapp.model;
 
+import android.graphics.Bitmap;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -23,6 +24,18 @@ public class GenerPrecenter {
         SimpleDateFormat format1 = new SimpleDateFormat("yyyyMMddhhmmss");
 
         return format1.format(cal.getTime());
+    }
+
+    public static Bitmap CropImage(Bitmap originImage, int widthScreen, int heighScreen, int widthCamera, int heightCamera){
+        int w1 = originImage.getWidth();
+        int h1 = originImage.getHeight();
+//        int heightYCrop = (int) (originImage.getHeight()*2.5);
+        int h = w1*heightCamera/widthCamera;
+        int heightYCrop = (int) (h1-(originImage.getHeight()/13*2.5)- h);
+//        widthCamera = originImage.getWidth();
+        Bitmap result = Bitmap.createBitmap(originImage, 0, heightYCrop, w1, h);
+
+        return result;
     }
 
     public static List<Data> ConVertJson(String request) {

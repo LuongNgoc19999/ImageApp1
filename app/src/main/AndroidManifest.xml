@@ -25,7 +25,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ImageApp"
         android:usesCleartextTraffic="true">
-        <activity android:name=".view.GroupCameraActivity"></activity>
+        <activity android:name=".view.ChatActivity"></activity>
+        <activity android:name=".view.GroupCameraActivity" />
         <activity android:name=".view.FileActivity" />
         <activity android:name=".MainActivity">
             <intent-filter>
